@@ -36,8 +36,8 @@ type OpTalosRecipe struct {
 	// oracleContract is the address of the State Oracle contract
 	oracleContract string
 
-	// faucet is the private key of the faucet address
-	faucet bool
+	// Enable the faucet UI
+	faucetUi bool
 
 	// faucetPrivateKey is the private key of the faucet address
 	faucetPrivateKey string
@@ -55,14 +55,16 @@ func (o *OpTalosRecipe) Flags() *flag.FlagSet {
 	flags := flag.NewFlagSet("pcl", flag.ContinueOnError)
 	flags.StringVar(&o.externalBuilder, "external-builder", "", "External builder URL")
 	flags.StringVar(&o.externalDA, "external-da", "", "External DA URL")
-	flags.StringVar(&o.assertionDAPrivateKey, "assertion-da-private-key", "", "Private key for assertion DA (required if external-da is unset, empty, or 'dev')")
+	// Default: $(cast keccak "credible-layer-sandbox-assertion-da") -> Address: 0xEc64B5CC78f8f0f2d17Fa2D48DdEFc9abdf68c2B
+	flags.StringVar(&o.assertionDAPrivateKey, "assertion-da-private-key", "0xb14a93020522e378f565ebd6d1032b06af46dc778a1bfea9602a9641547c4673", "Private key for assertion DA (required if external-da is unset, empty, or 'dev')")
 	flags.Var(&nullableUint64Value{&o.enableLatestFork}, "enable-latest-fork", "Enable latest fork isthmus (nil or empty = disabled, otherwise enabled at specified block)")
 	flags.Uint64Var(&o.blockTime, "block-time", defaultOpBlockTimeSeconds, "Block time to use for the rollup")
 	flags.Uint64Var(&o.batcherMaxChannelDuration, "batcher-max-channel-duration", 2, "Maximum channel duration to use for the batcher")
 	flags.Uint64Var(&o.assexGasLimit, "assex-gas-limit", 30000000, "Gas limit of the Assertion Execution")
 	flags.StringVar(&o.oracleContract, "oracle-contract", "0x6dD3f12ce435f69DCeDA7e31605C02Bb5422597b", "State Oracle contract address")
-	flags.BoolVar(&o.faucet, "faucet", false, "Enable the faucet")
-	flags.StringVar(&o.faucetPrivateKey, "faucet-private-key", "", "Private key for faucet (required if faucet is enabled)")
+	flags.BoolVar(&o.faucetUi, "faucet-ui", false, "Enable the faucet UI")
+	// Default: $(cast keccak "credible-layer-sandbox-faucet") -> Address: 0xA242C9e875a3135644a171CE7e0d44A14511F897
+	flags.StringVar(&o.faucetPrivateKey, "faucet-private-key", "0x0263f53e0add655d0caa4daaeaf8aa749689beed953a902fc16adf3b944e7fd4", "Private key for faucet")
 	return flags
 }
 
@@ -70,6 +72,10 @@ func (o *OpTalosRecipe) Artifacts() *ArtifactsBuilder {
 	builder := NewArtifactsBuilder()
 	builder.ApplyLatestL2Fork(o.enableLatestFork)
 	builder.OpBlockTime(o.blockTime)
+	builder.PrefundedAccounts([]string{
+		o.faucetPrivateKey,
+	})
+
 	return builder
 }
 
@@ -79,10 +85,6 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 		if o.assertionDAPrivateKey == "" {
 			panic("assertion-da-private-key is required when external-da is unset, empty, or 'dev'")
 		}
-	}
-	
-	if o.faucet && o.faucetPrivateKey == "" {
-		panic("faucet-private-key is required when faucet is enabled")
 	}
 
 	svcManager := NewManifest(ctx, artifacts.Out)
@@ -98,7 +100,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 	if o.externalDA == "" || o.externalDA == "dev" {
 		svcManager.AddService("assertion-da", &AssertionDA{
 			DevMode: o.externalDA == "dev",
-			Pk: o.assertionDAPrivateKey,
+			Pk:      o.assertionDAPrivateKey,
 		})
 		externalDaRef = Connect("assertion-da", "http")
 	}
@@ -115,7 +117,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 	}
 
 	externalHttpRef := Connect("op-talos", "http")
-	if o.faucet {
+	if o.faucetUi {
 		svcManager.AddService("eth-faucet", &Faucet{
 			Rpc:        externalHttpRef,
 			FaucetName: "",
