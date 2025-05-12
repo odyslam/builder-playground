@@ -55,13 +55,18 @@ func (f *Faucet) Run(service *Service, ctx *ExContext) {
 			"--faucet.name", f.FaucetName,
 			"--faucet.symbol", f.Symbol,
 			"--httpport", `{{Port "faucet" 6942}}`,
-		)
+		).
+		WithLabel("restart", "always")
+
 	service.DependsOn = []DependsOn{
 		{
 			Name:      "op-talos",
 			Condition: DependsOnConditionRunning,
 		},
 	}
+	service.WithReady(ReadyCheck{
+		QueryURL: f.Rpc,
+	})
 }
 
 type OpTalos struct {
