@@ -86,7 +86,7 @@ func (o *OpTalosRecipe) Artifacts() *ArtifactsBuilder {
 	return builder
 }
 
-func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
+func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, error) {
 	// Validate required flags
 	if o.externalDA == "" || o.externalDA == "dev" {
 		if o.assertionDAPrivateKey == "" {
@@ -100,7 +100,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 	if o.opTalosImageTag != "" { // If the flag was provided
 		parts := strings.SplitN(o.opTalosImageTag, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			panic(fmt.Sprintf("Invalid --op-talos-image-tag value: '%s'. Must be in 'imagename:tag' format with non-empty imagename and tag parts.", o.opTalosImageTag))
+			return nil, fmt.Errorf("Invalid --op-talos-image-tag value: '%s'. Must be in 'imagename:tag' format with non-empty imagename and tag parts.", o.opTalosImageTag)
 		}
 		parsedImageName = parts[0]
 		parsedImageTag = parts[1]
@@ -131,8 +131,8 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 			AssertionDA:    externalDaRef,
 			AssexGasLimit:  o.assexGasLimit,
 			OracleContract: o.oracleContract,
-			ImageName:      parsedImageName, // Use parsed/default image name
-			ImageTag:       parsedImageTag,  // Use parsed/default image tag
+			ImageName:      parsedImageName,
+			ImageTag:       parsedImageTag,
 		})
 		externalBuilderRef = Connect("op-talos", "authrpc")
 	}
@@ -166,7 +166,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) *Manifest {
 		RollupNode:         "op-node",
 		MaxChannelDuration: o.batcherMaxChannelDuration,
 	})
-	return svcManager
+	return svcManager, nil
 }
 
 func (o *OpTalosRecipe) Output(manifest *Manifest) map[string]interface{} {
