@@ -10,7 +10,7 @@
     },
     "l2_time": 1741345873,
     "system_config": {
-      "batcherAddr": "0xaff0ca253b97e54440965855cec0a8a2e2399896",
+      "batcherAddr": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
       "overhead": "0x0000000000000000000000000000000000000000000000000000000000000000",
       "scalar": "0x010000000000000000000000000000000000000000000000000c5fc500000558",
       "gasLimit": 60000000,
@@ -22,7 +22,7 @@
   "seq_window_size": 3600,
   "channel_timeout": 300,
   "l1_chain_id": 1337,
-  "l2_chain_id": 13,
+  "l2_chain_id": 2151908,
   "regolith_time": 0,
   "canyon_time": 0,
   "delta_time": 0,

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flashbots/builder-playground/playground"
+	"github.com/phylaxsystems/builder-playground/playground"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +29,9 @@ var withPrometheus bool
 var networkName string
 var labels playground.MapStringFlag
 var disableLogs bool
+var withGrafanaAlloy bool
+var withCaddy []string
+var detach bool
 
 var rootCmd = &cobra.Command{
 	Use:   "playground",
@@ -149,6 +152,7 @@ var recipes = []playground.Recipe{
 	&playground.L1Recipe{},
 	&playground.OpRecipe{},
 	&playground.BuilderNetRecipe{},
+	&playground.OpTalosRecipe{},
 }
 
 func main() {
@@ -174,7 +178,10 @@ func main() {
 		recipeCmd.Flags().StringVar(&logLevelFlag, "log-level", "info", "log level")
 		recipeCmd.Flags().BoolVar(&bindExternal, "bind-external", false, "bind host ports to external interface")
 		recipeCmd.Flags().BoolVar(&withPrometheus, "with-prometheus", false, "whether to gather the Prometheus metrics")
+		recipeCmd.Flags().BoolVar(&withGrafanaAlloy, "with-grafana-alloy", false, "whether to spawn a grafana alloy to agent for metrics, logs, traces")
+		recipeCmd.Flags().StringArrayVar(&withCaddy, "with-caddy", []string{}, "Enable caddy and expose the services with the given names")
 		recipeCmd.Flags().StringVar(&networkName, "network", "", "network name")
+		recipeCmd.Flags().BoolVar(&detach, "detach", false, "detach the services")
 		recipeCmd.Flags().Var(&labels, "labels", "list of labels to apply to the resources")
 		recipeCmd.Flags().BoolVar(&disableLogs, "disable-logs", false, "disable logs")
 
@@ -222,7 +229,24 @@ func runIt(recipe playground.Recipe) error {
 		return err
 	}
 
-	svcManager := recipe.Apply(&playground.ExContext{LogLevel: logLevel}, artifacts)
+	svcManager, err := recipe.Apply(&playground.ExContext{LogLevel: logLevel, AlloyEnabled: withGrafanaAlloy, CaddyEnabled: len(withCaddy) > 0}, artifacts)
+	if err != nil {
+		return fmt.Errorf("failed to apply recipe: %w", err)
+	}
+
+	if withGrafanaAlloy {
+		if err := playground.CreateGrafanaAlloyServices(svcManager, artifacts.Out); err != nil {
+			return fmt.Errorf("failed to create grafana alloy services: %w", err)
+		}
+	}
+
+	if len(withCaddy) > 0 {
+		log.Printf("Spawning a caddy reverse proxy for the services: %v\n", withCaddy)
+		if err := playground.CreateCaddyServices(withCaddy, svcManager, artifacts.Out); err != nil {
+			return fmt.Errorf("failed to create caddy services: %w", err)
+		}
+	}
+
 	if err := svcManager.Validate(); err != nil {
 		return fmt.Errorf("failed to validate manifest: %w", err)
 	}
@@ -293,6 +317,20 @@ func runIt(recipe playground.Recipe) error {
 			}
 			fmt.Printf("- %s (%s)\n", ss.Name, strings.Join(portsStr, ", "))
 		}
+		if len(withCaddy) > 0 {
+			fmt.Printf("\n========= Caddy Exposed Services =========\n")
+			for _, serviceName := range withCaddy {
+				service, ok := svcManager.GetService(serviceName)
+				if ok {
+					for _, port := range service.GetPorts() {
+						if port.Name == "http" || port.Name == "ws" {
+							fmt.Printf("- %s (%s): http://localhost:8888/%s/%s\n",
+								service.Name, port.Name, service.Name, port.Name)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	if err := dockerRunner.WaitForReady(ctx, 20*time.Second); err != nil {
@@ -326,6 +364,10 @@ func runIt(recipe playground.Recipe) error {
 	var timerCh <-chan time.Time
 	if timeout > 0 {
 		timerCh = time.After(timeout)
+	}
+
+	if detach {
+		return nil
 	}
 
 	select {

@@ -3,6 +3,7 @@ package playground
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +20,7 @@ type Recipe interface {
 	Description() string
 	Flags() *flag.FlagSet
 	Artifacts() *ArtifactsBuilder
-	Apply(ctx *ExContext, artifacts *Artifacts) *Manifest
+	Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, error)
 	Output(manifest *Manifest) map[string]interface{}
 }
 
@@ -77,7 +78,9 @@ type ExContext struct {
 	// This dependency is not ideal. Doing it so that I do not
 	// have to modify the serviceDesc interface to give services
 	// access to the output.
-	Output *output
+	Output       *output
+	AlloyEnabled bool
+	CaddyEnabled bool
 }
 
 type ServiceGen interface {
@@ -266,6 +269,8 @@ type Service struct {
 	Tag        string `json:"tag,omitempty"`
 	Image      string `json:"image,omitempty"`
 	Entrypoint string `json:"entrypoint,omitempty"`
+
+	Privileged bool `json:"privileged,omitempty"`
 }
 
 type instance struct {
@@ -396,11 +401,31 @@ func (s *Service) WithArgs(args ...string) *Service {
 	return s
 }
 
+func (s *Service) WithPrivileged() *Service {
+	log.Printf("Service %s is privileged. This is not recommended for production use.", s.Name)
+	s.Privileged = true
+	return s
+}
+
 func (s *Service) WithVolume(name string, localPath string) *Service {
 	if s.VolumesMapped == nil {
 		s.VolumesMapped = make(map[string]string)
 	}
 	s.VolumesMapped[localPath] = name
+	return s
+}
+
+// WithAbsoluteVolume adds a volume mapping using an absolute path on the host.
+// This is useful for binding system paths like /var/run/docker.sock.
+// The path must be absolute and will be used as-is without any modification.
+func (s *Service) WithAbsoluteVolume(containerPath string, hostPath string) *Service {
+	if !filepath.IsAbs(hostPath) {
+		panic(fmt.Sprintf("host path must be absolute: %s", hostPath))
+	}
+	if s.VolumesMapped == nil {
+		s.VolumesMapped = make(map[string]string)
+	}
+	s.VolumesMapped[containerPath] = hostPath
 	return s
 }
 
