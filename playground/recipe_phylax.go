@@ -145,7 +145,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 		})
 		externalBuilderRef = Connect("op-talos", "authrpc")
 	} else {
-		fmt.Sprintln("External Builder configured. Please add the following enode to the trusted peers: %s", geth.Enode)
+		fmt.Sprintln("External Builder configured. Please add the following enode to the trusted peers: %s", geth.Enode.EnodeURL("op-geth", "rpc"))
 	}
 
 	externalHttpRef := Connect("op-talos", "http")

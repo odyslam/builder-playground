@@ -79,7 +79,7 @@ type OpTalos struct {
 }
 
 func (o *OpTalos) Run(service *Service, ctx *ExContext) {
-	enode := EnodeURL(&o.GethEnode, "op-geth", "rpc")
+	enode := o.GethEnode.EnodeURL("op-geth", "rpc")
 	service.WithImage(o.ImageName).
 		WithTag(o.ImageTag).
 		WithArgs(

@@ -709,8 +709,8 @@ func (e *EnodeAddr) ID() enode.ID {
 }
 
 // EnodeURL returns the enode URL for the given service and port
-func EnodeURL(enode *EnodeAddr, serviceName string, portName string) string {
-	pub := enode.PrivKey.PublicKey
+func (e *EnodeAddr) EnodeURL(serviceName string, portName string) string {
+	pub := e.PrivKey.PublicKey
 	pubBytes := ecrypto.FromECDSAPub(&pub)     // 65 bytes, uncompressed
 	pubHex := hex.EncodeToString(pubBytes)[2:] // remove the "04" prefix
 	return fmt.Sprintf("enode://%s@%s", pubHex, ConnectRaw(serviceName, portName, "", ""))
