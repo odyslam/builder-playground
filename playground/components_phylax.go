@@ -80,6 +80,8 @@ type OpTalos struct {
 }
 
 func (o *OpTalos) Run(service *Service, ctx *ExContext) {
+	// fixme(odysseas): This doesn't really print the enode, it prints the ID
+	// I am not certain yet how to get the enode
 	enode := fmt.Sprintf("enode://%s@op-geth:30303", o.GethEnode.ID())
 	fmt.Println(enode)
 	service.WithImage(o.ImageName).
