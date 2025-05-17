@@ -75,13 +75,16 @@ type OpTalos struct {
 	ImageName      string
 	ImageTag       string
 	BlockTag       string
+	GethEnode      EnodeAddr
 }
 
 func (o *OpTalos) Run(service *Service, ctx *ExContext) {
+	enode := o.GethEnode.EnodeURL("op-geth", "rpc")
 	service.WithImage(o.ImageName).
 		WithTag(o.ImageTag).
 		WithArgs(
 			"node",
+			"--trusted-peers", enode,
 			"--authrpc.port", `{{Port "authrpc" 8551}}`,
 			"--authrpc.addr", "0.0.0.0",
 			"--authrpc.jwtsecret", "/data/jwtsecret",
@@ -93,7 +96,6 @@ func (o *OpTalos) Run(service *Service, ctx *ExContext) {
 			"--ws.port", `{{Port "ws" 8546}}`,
 			"--chain", "/data/l2-genesis.json",
 			"--datadir", "/data_op_talos",
-			"--disable-discovery",
 			"--color", "never",
 			"--metrics", `0.0.0.0:{{Port "metrics" 9090}}`,
 			"--port", `{{Port "rpc" 30303}}`,
