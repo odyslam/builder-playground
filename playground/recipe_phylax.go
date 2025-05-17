@@ -119,6 +119,9 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 		BeaconNode: "beacon",
 	})
 
+	geth := &OpGeth{}
+	svcManager.AddService("op-geth", geth)
+
 	externalDaRef := o.externalDA
 	if o.externalDA == "" || o.externalDA == "dev" {
 		svcManager.AddService("assertion-da", &AssertionDA{
@@ -130,7 +133,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 
 	externalBuilderRef := o.externalBuilder
 	if o.externalBuilder == "" {
-		// Add a new op-reth service and connect it to Rollup-boost
+		// Add a new OP-Talos service and connect it to Rollup-boost
 		svcManager.AddService("op-talos", &OpTalos{
 			AssertionDA:    externalDaRef,
 			AssexGasLimit:  o.assexGasLimit,
@@ -138,11 +141,15 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 			ImageName:      parsedImageName,
 			ImageTag:       parsedImageTag,
 			BlockTag:       o.opTalosBlockTag,
+			GethEnode:      *geth.Enode,
 		})
 		externalBuilderRef = Connect("op-talos", "authrpc")
+	} else {
+		fmt.Sprintln("External Builder configured. Please add the following enode to the trusted peers: %s", geth.Enode)
 	}
 
 	externalHttpRef := Connect("op-talos", "http")
+
 	if o.faucetUi {
 		svcManager.AddService("eth-faucet", &Faucet{
 			Rpc:        externalHttpRef,
@@ -164,7 +171,6 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 		L1Beacon: "beacon",
 		L2Node:   elNode,
 	})
-	svcManager.AddService("op-geth", &OpGeth{})
 	svcManager.AddService("op-batcher", &OpBatcher{
 		L1Node:             "el",
 		L2Node:             "op-geth",
