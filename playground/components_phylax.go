@@ -1,7 +1,6 @@
 package playground
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -80,10 +79,7 @@ type OpTalos struct {
 }
 
 func (o *OpTalos) Run(service *Service, ctx *ExContext) {
-	// fixme(odysseas): This doesn't really print the enode, it prints the ID
-	// I am not certain yet how to get the enode
-	enode := fmt.Sprintf("enode://%s@op-geth:30303", o.GethEnode.ID())
-	fmt.Println(enode)
+	enode := EnodeURL(&o.GethEnode, "op-geth", "rpc")
 	service.WithImage(o.ImageName).
 		WithTag(o.ImageTag).
 		WithArgs(
