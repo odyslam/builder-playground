@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"log"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -104,7 +106,7 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 	if o.opTalosImageTag != "" { // If the flag was provided
 		parts := strings.SplitN(o.opTalosImageTag, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("Invalid --op-talos-image-tag value: '%s'. Must be in 'imagename:tag' format with non-empty imagename and tag parts.", o.opTalosImageTag)
+			return nil, fmt.Errorf("invalid --op-talos-image-tag value: '%s'. Must be in 'imagename:tag' format with non-empty imagename and tag parts", o.opTalosImageTag)
 		}
 		parsedImageName = parts[0]
 		parsedImageTag = parts[1]
@@ -145,9 +147,13 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 		})
 		externalBuilderRef = Connect("op-talos", "authrpc")
 	} else {
-		fmt.Sprintln("External Builder configured. Please add the following enode to the trusted peers: %s", geth.Enode.EnodeURL("op-geth", "rpc"))
-	}
+		// Extract just the enode ID portion without the template
+		enodeURL := geth.Enode.EnodeURL("op-geth", "rpc")
+		enodeID := strings.Split(enodeURL, "@")[0]
 
+		// Log clear instructions for the user
+		log.Printf("External Builder configured. Sequencer EL enode: %s@<RPC_ENDPOINT>", enodeID)
+	}
 	externalHttpRef := Connect("op-talos", "http")
 
 	if o.faucetUi {
@@ -181,14 +187,6 @@ func (o *OpTalosRecipe) Apply(ctx *ExContext, artifacts *Artifacts) (*Manifest, 
 }
 
 func (o *OpTalosRecipe) Output(manifest *Manifest) map[string]interface{} {
-	/*
-		opGeth := manifest.MustGetService("op-geth").component.(*OpGeth)
-		if opGeth.Enode != "" {
-			// Only output if enode was set
-			return map[string]interface{}{
-				"op-geth-enode": opGeth.Enode,
-			}
-		}
-	*/
+	// Just return empty map for now
 	return map[string]interface{}{}
 }
