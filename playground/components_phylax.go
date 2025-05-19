@@ -102,6 +102,7 @@ func (o *OpTalos) Run(service *Service, ctx *ExContext) {
 			"--ae.rpc_da_url", o.AssertionDA,
 			"--ae.rpc_url", "ws://localhost:8546",
 			"--ae.oracle_contract", o.OracleContract,
+			"--ae.rpc_store_db_path", "/data/rpc_store_db",
 		).
 		WithArtifact("/data/jwtsecret", "jwtsecret").
 		WithArtifact("/data/l2-genesis.json", "l2-genesis.json").
