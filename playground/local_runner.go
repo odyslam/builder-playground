@@ -19,7 +19,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/ethereum/go-ethereum/log"
@@ -562,28 +561,28 @@ func printAddr(protocol, serviceName string, port int, user string) string {
 }
 
 func (d *LocalRunner) validateImageExists(imageName string) error {
-	// check locally
+	// Only check locally - don't attempt to pull
 	_, err := d.client.ImageInspect(context.Background(), imageName)
 	if err == nil {
-		return nil
-	}
-	if !client.IsErrNotFound(err) {
-		return err
-	}
-
-	// Try to pull the image with a short timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	reader, err := d.client.ImagePull(ctx, imageName, image.PullOptions{})
-	if err == nil {
-		// Pull started successfully - image exists and we have access
-		// Close the reader to cancel the pull
-		reader.Close()
+		// Image exists locally
 		return nil
 	}
 
-	return fmt.Errorf("image %s not found or not accessible: %w", imageName, err)
+	// For all errors, assume docker-compose will handle pulling
+	// This handles several cases:
+	// 1. Private images that need authentication
+	// 2. Images that will be pulled at runtime
+	// 3. Network or timeout issues
+
+	// We could return an error here, but it's better to let docker-compose handle
+	// all image pulling since it respects Docker credentials and has better
+	// handling for retries and timeouts
+
+	// Log that we're assuming the image will be pulled by docker-compose
+	log.Warn("Image not found locally. Assuming docker compose will pull it",
+		"image", imageName)
+
+	return nil
 }
 
 func (d *LocalRunner) toDockerComposeService(s *Service) (map[string]interface{}, error) {
