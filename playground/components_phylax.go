@@ -28,6 +28,9 @@ func (a *AssertionDA) Run(service *Service, ctx *ExContext) {
 			WithEnv("OTEL_ENVIRONMENT_NAME", "PCL_DA").
 			WithEnv("OTEL_SERVICE_NAME", "ASSERTION_DA")
 	}
+	service.WithReady(ReadyCheck{
+		QueryURL: Connect("op-talos", "http"),
+	})
 
 }
 
@@ -115,6 +118,9 @@ func (o *OpTalos) Run(service *Service, ctx *ExContext) {
 			WithEnv("OTEL_ENVIRONMENT_NAME", "PCL_TALOS").
 			WithEnv("OTEL_SERVICE_NAME", "OP_TALOS")
 	}
+	service.WithReady(ReadyCheck{
+		QueryURL: Connect("op-talos", "http"),
+	})
 }
 
 func (o *OpTalos) Name() string {
